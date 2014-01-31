@@ -3,8 +3,7 @@
 #include <time.h>
 #include <omp.h> 
 
-#define mmOLD 15
-#define mm 15
+#define mm 20
 #define npart 4*mm*mm*mm
 /*
  *  Function declarations
@@ -23,7 +22,7 @@
   fcc(double[],int,int,double);
 
   void
-  forces(int,double[],double[],double,double);
+  forces(int,double,double);
 
   double
   mkekin(int,double[],double[],double,double);
@@ -47,27 +46,24 @@
   double epot;
   double vir;
   double count;
-  int max_threads;
+
+  double f[npart*3];
+  double x[npart*3];
+
+  int granularity;
+
 /*
  *  Main program : Molecular Dynamics simulation.
  */
-int main() {
+int main(){
     int move;
-    double x[npart*3], vh[npart*3], f[npart*3];
+    //double x[npart*3], vh[npart*3], f[npart*3];
+	double vh[npart*3];
     double ekin;
     double vel;
     double sc;
     double start, time;
 
-//   omp_set_nested(0);
-   max_threads = omp_get_num_procs();
-   if(max_threads > 3*npart) 
-      max_threads = 3*npart;
-
-max_threads = 32;
-
-   printf("Executing with %i threads. \n", max_threads);
-   printf("Force will loop: %i times. \n", 3*npart);
 
   /*
    *  Parameter definitions
@@ -88,6 +84,37 @@ max_threads = 32;
     double hsq2   = hsq*0.5;
     double tscale = 16.0/((double)npart-1.0);
     double vaver  = 1.13*sqrt(tref/24.0);
+
+   char* tmp = getenv("TASK_GRANULARITY");
+   if(tmp[0] == '\0') {
+      printf("Task granularity ($TASK_GRANULARITY) NOT set. Defaulting to 100. \n");   
+      granularity = 100;
+   }
+   else
+   {
+         granularity = atoi(tmp);   
+   }
+
+   if(granularity != 1 && granularity % 2 != 0)
+   {
+      printf("Task granularity is expected to be even or 1. \n", granularity, npart);
+      return 0;      
+   }
+   else if(npart % granularity != 0)
+   {
+      printf("Task granularity (%i) set has to divide npart=%i. \n", granularity, npart);
+      return 0;
+   }
+   if(granularity < 1)
+   {
+      printf("Task granularity (%i) set is to small. Defaulting to 1. \n", granularity);
+      granularity = 1;
+   }
+   else 
+   {
+        printf("Task granularity = %i. \n", granularity);
+   }
+
 
   /*
    *  Initial output
@@ -114,31 +141,35 @@ max_threads = 32;
    */
     mxwell(vh, 3*npart, h, tref);
     dfill(3*npart, 0.0, f, 1);
+
+     start = secnds(); 
+
+#pragma omp parallel default(shared) //shared(epot, vir, x, vh, f, side, rcoff, move, movemx, ekin, hsq2, hsq, vel, vaver, h, istop, irep, sc, tref, tscale, iprint, count, den, granularity) 
+{
+#pragma omp single private(move)
+{
+    printf("Thread-%i: I'm the task creator. There are %i threads in this thread-team.\n", omp_get_thread_num(), omp_get_num_threads());
+
   /*
    *  Start of md
    */
     printf("\n    i       ke         pe            e         temp   "
            "   pres      vel      rp\n  -----  ----------  ----------"
            "  ----------  --------  --------  --------  ----\n");
-
-     start = secnds(); 
-#pragma omp parallel num_threads(max_threads)
-{
-#pragma omp single firstprivate(move)
-{
-    for (move=1; move<=movemx/*1*/; move++) {
+    for (move=1; move<=movemx; move++) {
 
     /*
      *  Move the particles and partially update velocities
      */
       domove(3*npart, x, vh, f, side);
-
+ 
     /*
      *  Compute forces in the new positions and accumulate the virial
      *  and potential energy.
      */
-      forces(npart, x, f, side, rcoff);
-
+     forces(npart, side, rcoff);
+	  #pragma omp taskwait
+   
     /*
      *  Scale forces, complete update of velocities and compute k.e.
      */
@@ -148,7 +179,7 @@ max_threads = 32;
      *  Average the velocity and temperature scale if desired
      */
       vel=velavg(npart, vh, vaver, h);
-      if (move<istop && fmod(move, irep)==0) {
+      if (move<istop && fmod((double)move, (double)irep)==0) {
         sc=sqrt(tref/(tscale*ekin));
         dscal(3*npart, sc, vh, 1);
         ekin=tref/tscale;
@@ -157,18 +188,17 @@ max_threads = 32;
     /*
      *  Sum to get full potential energy and virial
      */
-      if (fmod(move, iprint)==0)
+      if (fmod((double)move, (double)iprint)==0)
         prnout(move, ekin, epot, tscale, vir, vel, count, npart, den);
-      
-    }
+}
+}
+}
 
     time = secnds() - start;  
 
     printf("Time =  %f\n",(float) time);  
-
+//	std::cin.ignore();
   }
-}
-}
 
 time_t starttime = 0; 
 

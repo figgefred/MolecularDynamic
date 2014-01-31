@@ -4,7 +4,7 @@
 # copy to make.def
 CC         = icc
 CPP         = icpc
-OPTFLAGS   = -openmp -O0
+OPTFLAGS   = -openmp -O0 -g -Wall
 
 
 CLINKER     = $(CC)

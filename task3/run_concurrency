@@ -1,0 +1,1 @@
+make && rm r0damn -rf && amplxe-cl -collect concurrency -r r0damn ./md && amplxe-cl -report hotspots -r r0damn

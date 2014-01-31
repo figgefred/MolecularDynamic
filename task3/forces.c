@@ -1,8 +1,10 @@
-
+#include <omp.h>
 /*
  *  Compute forces and accumulate the virial and the potential
  */
   extern double epot, vir;
+  extern double** fs;
+  extern int force_length;
   extern int max_threads;
 
   void
@@ -11,9 +13,12 @@
     int   i, j;
     vir    = 0.0;
     epot   = 0.0;
+	int threadId;
 
-#pragma omp parallel for default(none) num_threads(max_threads) shared(npart, x, f, side, rcoff, epot, vir) schedule(dynamic) private (j)  //reduction(+:epot, vir)
-
+#pragma omp parallel default(none) shared(npart, x, f, side, rcoff, epot, vir, force_length, fs, max_threads) private (i, j, threadId)
+{
+	threadId = omp_get_thread_num();
+#pragma omp for schedule(dynamic) reduction(+:epot, vir)
     for (i=0; i<npart*3; i+=3) {
 
       // zero force components on particle i 
@@ -24,7 +29,7 @@
       double my_epot = 0.0;
       double my_vir = 0.0;
       int tmpIndex;
-
+	  
       // loop over all particles with index > i 
  
       for (j=i+3; j<npart*3; j+=3) {
@@ -54,44 +59,42 @@
           double rrd4     = rrd3*rrd;
           double r148     = rrd4*(rrd3 - 0.5);
 
-          my_epot    += rrd3*(rrd3-1.0);
-          my_vir     += rd*r148;
+          epot    += rrd3*(rrd3-1.0);
+          vir     -= rd*r148;
 
           fxi     += xx*r148;
           fyi     += yy*r148;
           fzi     += zz*r148;
 
-
-	tmpIndex = j;
-	#pragma omp atomic
-          f[tmpIndex]    -= xx*r148;
-	tmpIndex++;
-	#pragma omp atomic
-          f[tmpIndex]  -= yy*r148;
-	tmpIndex++;
-	#pragma omp atomic
-          f[tmpIndex]  -= zz*r148;
-
+			tmpIndex = j;
+			fs[threadId][tmpIndex]    -= xx*r148;
+			tmpIndex++;
+			fs[threadId][tmpIndex]  -= yy*r148;
+			tmpIndex++;
+			fs[threadId][tmpIndex]  -= zz*r148;
         }
 
       }
 
-
-#pragma omp atomic
-epot += my_epot;
-#pragma omp atomic
-vir -= my_vir;	
 	tmpIndex =i;
       // update forces on particle i 
-	#pragma omp atomic
-	f[tmpIndex]     += fxi;
+	fs[threadId][tmpIndex]     += fxi;
 	tmpIndex++;
-	#pragma omp atomic
-	f[tmpIndex]   += fyi;
+	fs[threadId][tmpIndex]   += fyi;
 	tmpIndex++;
-	#pragma omp atomic
-	f[tmpIndex]   += fzi;
+	fs[threadId][tmpIndex]   += fzi;
 
     }
-
+	
+	#pragma omp for schedule(static) nowait
+	// For every 
+	for(i = 0; i < force_length; i++)
+	{
+		for(j = 0; j < max_threads; j++)
+		{
+			f[i] += fs[j][i];
+			fs[j][i] = 0.0;
+		}
+	}
+}
   }

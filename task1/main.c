@@ -48,8 +48,6 @@
   double vir;
   double count;
 
-  int max_threads;
-
 /*
  *  Main program : Molecular Dynamics simulation.
  */
@@ -61,12 +59,6 @@ int main(){
     double sc;
     double start, time;
 
-   max_threads = omp_get_num_procs();
-   if(max_threads > 3*npart) 
-      max_threads = 3*npart;
-   max_threads =32;
-
-   printf("Executing with %i threads. \n", max_threads);
    printf("Force will loop: %i times. \n", 3*npart);
 
 

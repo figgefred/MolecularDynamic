@@ -1,33 +1,28 @@
-
+#include <stdio.h>
+#include <omp.h>
 /*
  *  Compute forces and accumulate the virial and the potential
  */
   extern double epot, vir;
-  extern int max_threads;
 
   void
   forces(int npart, double x[], double f[], double side, double rcoff){
 
-    int   i, j;
     vir    = 0.0;
     epot   = 0.0;
 
-#pragma omp parallel for default(none) num_threads(max_threads) shared(npart, x, f, side, rcoff, epot, vir) schedule(dynamic) private (j)  //reduction(+:epot, vir)
-
-    for (i=0; i<npart*3; i+=3) {
-
+#pragma omp parallel for default(none) shared(npart, x, f, side, rcoff) schedule(static) reduction(+:epot, vir)
+    for (int i=0; i<npart*3; i+=3) {
       // zero force components on particle i 
 
       double fxi = 0.0;
       double fyi = 0.0;
       double fzi = 0.0;
-      double my_epot = 0.0;
-      double my_vir = 0.0;
       int tmpIndex;
 
       // loop over all particles with index > i 
  
-      for (j=i+3; j<npart*3; j+=3) {
+      for (int j=i+3; j<npart*3; j+=3) {
 
 	// compute distance between particles i and j allowing for wraparound 
 
@@ -54,8 +49,8 @@
           double rrd4     = rrd3*rrd;
           double r148     = rrd4*(rrd3 - 0.5);
 
-          my_epot    += rrd3*(rrd3-1.0);
-          my_vir     += rd*r148;
+          epot    += rrd3*(rrd3-1.0);
+          vir     -= rd*r148;
 
           fxi     += xx*r148;
           fyi     += yy*r148;
@@ -75,12 +70,6 @@
         }
 
       }
-
-
-#pragma omp atomic
-epot += my_epot;
-#pragma omp atomic
-vir -= my_vir;	
 	tmpIndex =i;
       // update forces on particle i 
 	#pragma omp atomic

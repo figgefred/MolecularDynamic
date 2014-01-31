@@ -1,0 +1,12 @@
+AMPLXE HAX
+
+amplxe-cl -help collect
+
+amplxe-cl -collect hotspots -r <result_folder>
+
+
+amplxe-cl -report hotspots -group-by=thread -r <result_folder>
+amplxe-cl -report hotspots -group-by=thread,function -r <result_folder>
+amplxe-cl -report hotspots -group-by=module -r <result_folder>
+
+amplxe-cl -report hotspots -source-object function=<function_name> -r <result_folder>

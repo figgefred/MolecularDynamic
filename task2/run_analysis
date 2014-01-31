@@ -1,0 +1,8 @@
+make
+export TASK_GRANULARITY=$2
+export OMP_NUM_THREADS=$1
+echo "OMP_NUM_THREADS = $OMP_NUM_THREADS"
+echo "TASK_GRANULARITY = $TASK_GRANULARITY"
+rm r0damn -rf 
+amplxe-cl -collect hotspots -r r0damn ./md
+amplxe-cl -report hotspots -group-by=thread,function -r r0damn

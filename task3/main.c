@@ -2,6 +2,7 @@
 #include <math.h>
 #include <time.h>
 #include <omp.h> 
+#include <cstring>
 
 #define mmOld 15
 #define mm 15
@@ -48,6 +49,9 @@
   double vir;
   double count;
 
+  double** fs;
+  int force_length = 3*npart;
+  
   int max_threads;
 
 /*
@@ -60,14 +64,29 @@ int main(){
     double vel;
     double sc;
     double start, time;
+	
+   char* tmp = getenv("OMP_NUM_THREADS");
+   if(strcmp(tmp, "") == 0) {
+      max_threads =  omp_get_num_procs();
+      printf("OMP_NUM_THREADS contains no value. Defaulting to %i. \n", max_threads);
+   }
+   else
+   {
+      max_threads = atoi(tmp);
+   }
+   if(max_threads < 1) {
+      max_threads =  1;
+      printf("OMP_NUM_THREADS is less then 1. Defaulting to %i. \n", max_threads);
+   }
 
-   max_threads = omp_get_num_procs();
-   if(max_threads > 3*npart) 
-      max_threads = 3*npart;
-   max_threads = 16;
+   printf("Running with %i threads!. \n", max_threads);
+   omp_set_num_threads( max_threads);
 
-   printf("Executing with %i threads. \n", max_threads);
-   printf("Force will loop: %i times. \n", 3*npart);
+   fs = new double*[max_threads];
+   for(int i = 0; i < max_threads; i++)
+   {
+		fs[i] = new double[force_length];
+   }
 
 
   /*
@@ -165,6 +184,12 @@ int main(){
 
     printf("Time =  %f\n",(float) time);  
 
+	for(int i = 0; i < max_threads; i++)
+	{
+		delete fs[i];
+	}
+	delete fs;
+	
   }
 
 time_t starttime = 0; 

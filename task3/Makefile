@@ -2,9 +2,9 @@
 
 # for intel compiler on linux
 # copy to make.def
-CC         = icc
+CC         = icpc #icc
 CPP         = icpc
-OPTFLAGS   = -openmp -O0
+OPTFLAGS   = -fopenmp -O0 -g -Wall #-openmp -O0
 
 
 CLINKER     = $(CC)
