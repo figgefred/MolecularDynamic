@@ -19,7 +19,7 @@ forces(int npart, double side, double rcoff)
 	int task_increment = increment*granularity;
 	int max = npart*increment;
     for (t=0; t < max; t += task_increment) {
-		#pragma omp task default(none) firstprivate(t, npart, side, rcoff, increment, task_increment, max) private(i, j) shared(epot, vir, x, f)
+		#pragma omp task default(none) private(i,j) firstprivate(t, npart, side, rcoff, increment, task_increment, max)  shared(epot, vir, f, x)
 		{
 		  // zero force components on particle i 
 		  int tmpIndex;
@@ -95,6 +95,7 @@ forces(int npart, double side, double rcoff)
 			   vir += thread_vir;
 		}
 	}
+	#pragma omp taskwait
 }
 /*
 void

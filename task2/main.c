@@ -3,7 +3,7 @@
 #include <time.h>
 #include <omp.h> 
 
-#define mm 20
+#define mm 15
 #define npart 4*mm*mm*mm
 /*
  *  Function declarations
@@ -168,7 +168,7 @@ int main(){
      *  and potential energy.
      */
      forces(npart, side, rcoff);
-	  #pragma omp taskwait
+//	  #pragma omp taskwait
    
     /*
      *  Scale forces, complete update of velocities and compute k.e.

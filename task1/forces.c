@@ -11,7 +11,7 @@
     vir    = 0.0;
     epot   = 0.0;
 
-#pragma omp parallel for default(none) shared(npart, x, f, side, rcoff) schedule(static) reduction(+:epot, vir)
+#pragma omp parallel for default(none) shared(npart, x, f, side, rcoff) schedule(dynamic) reduction(+:epot, vir)
     for (int i=0; i<npart*3; i+=3) {
       // zero force components on particle i 
 
